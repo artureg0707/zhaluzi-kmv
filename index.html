@@ -702,42 +702,63 @@ document.getElementById('order-form').addEventListener('submit', function (e) {
     status.textContent = '';
     return;
   }
-  /* Реальная отправка: FormSubmit (бесплатный почтовый шлюз) на artureg0707@gmail.com */
+  /* Отправка заявки: основной канал FormSubmit, запасной — WhatsApp с готовым текстом */
   var btn = document.getElementById('f-submit');
   btn.disabled = true;
   btn.textContent = 'Отправляем...';
   status.textContent = '';
+  status.style.color = '';
+  var nameV = name.value.trim(), phoneV = phone.value.trim();
+  var cityV = document.getElementById('f-city').value.trim() || 'не указан';
+  var commentV = document.getElementById('f-comment').value.trim() || 'нет';
   var fd = new FormData();
-  fd.append('name', name.value.trim());
-  fd.append('phone', phone.value.trim());
-  fd.append('city', document.getElementById('f-city').value.trim() || 'не указан');
-  fd.append('comment', document.getElementById('f-comment').value.trim() || 'нет');
-  fd.append('_subject', 'Заявка с сайта Жалюзи КМВ — ' + name.value.trim() + ', ' + phone.value.trim());
+  fd.append('name', nameV);
+  fd.append('phone', phoneV);
+  fd.append('city', cityV);
+  fd.append('comment', commentV);
+  fd.append('_subject', 'Заявка с сайта Жалюзи КМВ — ' + nameV + ', ' + phoneV);
   fd.append('_template', 'table');
   fd.append('_captcha', 'false');
-  fetch('https://formsubmit.co/ajax/artureg0707@gmail.com', {
-    method: 'POST',
-    body: fd
-  })
+  /* гарантированный сброс кнопки, даже если сеть молчит */
+  var settled = false;
+  var resetBtn = function () { btn.disabled = false; btn.textContent = 'Отправить заявку'; };
+  var failTimer = setTimeout(function () {
+    if (settled) return;
+    settled = true;
+    showFallback(nameV, phoneV, cityV, commentV);
+    resetBtn();
+  }, 12000);
+  fetch('https://formsubmit.co/ajax/artureg0707@gmail.com', { method: 'POST', body: fd })
   .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
   .then(function (res) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(failTimer);
     if (res.ok && (res.j.success === 'true' || res.j.success === true)) {
       this.style.display = 'none';
       document.getElementById('order-success').classList.add('show');
     } else {
-      btn.disabled = false;
-      btn.textContent = 'Отправить заявку';
-      status.textContent = 'Не получилось отправить. Позвоните нам: 8 928 824 69 36 или напишите в WhatsApp.';
-      status.style.color = '#B4442F';
+      showFallback(nameV, phoneV, cityV, commentV);
+      resetBtn();
     }
   }.bind(this))
   .catch(function () {
-    btn.disabled = false;
-    btn.textContent = 'Отправить заявку';
-    status.textContent = 'Нет связи с интернетом. Позвоните нам: 8 928 824 69 36 — или напишите в WhatsApp.';
-    status.style.color = '#B4442F';
+    if (settled) return;
+    settled = true;
+    clearTimeout(failTimer);
+    showFallback(nameV, phoneV, cityV, commentV);
+    resetBtn();
   });
 });
+
+/* Запасной канал: открываем WhatsApp с полностью заполненной заявкой — клиенту остаётся нажать «Отправить» */
+function showFallback(n, p, c, m) {
+  var status = document.getElementById('form-status');
+  status.innerHTML = 'Прямая отправка сейчас недоступна. Нажмите кнопку ниже — заявка откроется в WhatsApp, вам останется её отправить:' +
+    '<a class="msgr msgr-wa" style="margin-top:10px" href="https://wa.me/79288246936?text=' +
+    encodeURIComponent('Заявка с сайта Жалюзи КМВ. Имя: ' + n + '. Телефон: ' + p + '. Город: ' + c + '. Что нужно: ' + m) +
+    '" target="_blank" rel="noopener">Отправить заявку через WhatsApp</a>';
+}
 /* счётчик посещений (Abacus, без регистрации, работает из РФ) */
 (function () {
   var KEY = 'zhaluzi-kmv-visits';

@@ -695,14 +695,41 @@ document.getElementById('order-form').addEventListener('submit', function (e) {
     status.textContent = '';
     return;
   }
-  /* демо-режим: заявка не отправляется на сервер, контактные данные просим уточнить */
-  var payload = 'Новая заявка с сайта Жалюзи КМВ. Имя: ' + name.value.trim() +
-    '. Телефон: ' + phone.value.trim() +
-    '. Город: ' + (document.getElementById('f-city').value.trim() || 'не указан') +
-    '. Комментарий: ' + (document.getElementById('f-comment').value.trim() || 'нет');
-  this.style.display = 'none';
-  document.getElementById('order-success').classList.add('show');
-  window.__orderPayload = payload; /* для подключения CRM/почты позже */
+  /* Реальная отправка: FormSubmit (бесплатный почтовый шлюз) на artureg0707@gmail.com */
+  var btn = document.getElementById('f-submit');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+  status.textContent = '';
+  var fd = new FormData();
+  fd.append('name', name.value.trim());
+  fd.append('phone', phone.value.trim());
+  fd.append('city', document.getElementById('f-city').value.trim() || 'не указан');
+  fd.append('comment', document.getElementById('f-comment').value.trim() || 'нет');
+  fd.append('_subject', 'Заявка с сайта Жалюзи КМВ — ' + name.value.trim() + ', ' + phone.value.trim());
+  fd.append('_template', 'table');
+  fd.append('_captcha', 'false');
+  fetch('https://formsubmit.co/ajax/artureg0707@gmail.com', {
+    method: 'POST',
+    body: fd
+  })
+  .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+  .then(function (res) {
+    if (res.ok && (res.j.success === 'true' || res.j.success === true)) {
+      this.style.display = 'none';
+      document.getElementById('order-success').classList.add('show');
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Отправить заявку';
+      status.textContent = 'Не получилось отправить. Позвоните нам: 8 928 824 69 36 или напишите в WhatsApp.';
+      status.style.color = '#B4442F';
+    }
+  }.bind(this))
+  .catch(function () {
+    btn.disabled = false;
+    btn.textContent = 'Отправить заявку';
+    status.textContent = 'Нет связи с интернетом. Позвоните нам: 8 928 824 69 36 — или напишите в WhatsApp.';
+    status.style.color = '#B4442F';
+  });
 });
 </script>
 </body>

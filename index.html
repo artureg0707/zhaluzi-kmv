@@ -151,6 +151,9 @@ footer.site a{color:#CBBDA6;text-decoration:none;font-size:14.5px}
 footer.site a:hover{color:#E9C9A4}
 .foot-links{display:grid;gap:9px}
 .foot-bottom{border-top:1px solid rgba(243,235,221,.14);margin-top:40px;padding-top:22px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:13px}
+.visit-counter{display:inline-flex;align-items:center;gap:7px;color:#E9C9A4;font-weight:600}
+.visit-counter svg{opacity:.8}
+.visit-counter b{font-family:var(--font-display);font-weight:700}
 /* messengers */
 .msgr-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .msgr{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:600;font-size:14.5px;border-radius:999px;padding:11px 20px;text-decoration:none;border:1px solid transparent;transition:transform .18s ease, background .18s ease, box-shadow .18s ease}
@@ -593,6 +596,10 @@ footer.site a:hover{color:#E9C9A4}
     </div>
     <div class="foot-bottom">
       <span>© 2026 Жалюзи КМВ. Все права защищены.</span>
+      <span class="visit-counter" id="visit-counter" title="Сколько раз сайт открывали посетители">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span id="visit-count">…</span>
+      </span>
       <span>Изготовление и монтаж солнцезащитных систем</span>
     </div>
   </div>
@@ -731,6 +738,43 @@ document.getElementById('order-form').addEventListener('submit', function (e) {
     status.style.color = '#B4442F';
   });
 });
+/* счётчик посещений (Abacus, без регистрации, работает из РФ) */
+(function () {
+  var KEY = 'zhaluzi-kmv-visits';
+  var el = document.getElementById('visit-count');
+  if (!el) return;
+  /* не считаем собственные перезагрузки одной сессии: один hit на посетителя в час */
+  var last = 0;
+  try { last = parseInt(sessionStorage.getItem(KEY) || '0', 10); } catch (e) {}
+  var now = Date.now();
+  var needHit = !last || (now - last) > 3600000;
+  var url = 'https://abacus.jasoncameron.dev/' + (needHit ? 'hit' : 'get') + '/zhaluzi-kmv-site/visits';
+  fetch(url)
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var n = parseInt(j.value, 10);
+      if (!isNaN(n)) {
+        el.innerHTML = '<b>' + fmt.format(n) + '</b> ' + plural(n);
+        if (needHit) { try { sessionStorage.setItem(KEY, String(now)); } catch (e) {} }
+      } else { el.parentNode.style.display = 'none'; }
+    })
+    .catch(function () { el.parentNode.style.display = 'none'; });
+  function plural(n) {
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'просмотр';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'просмотра';
+    return 'просмотров';
+  }
+})();
+
+/* Яндекс Метрика: когда получите номер счётчика на metrika.yandex.ru, впишите его в METRIKA_ID и удалите строку-звёздочки до и после блока */
+/*
+var METRIKA_ID = 00000000; // ← замените 00000000 на ваш 8-значный номер
+(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');
+ym(METRIKA_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});
+*/
 </script>
 </body>
 </html>
